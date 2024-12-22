@@ -124,3 +124,11 @@ extension UITextField: UITextFieldDelegate {
         return true
     }
 }
+
+extension UITextField: UIScrollViewDelegate {
+    
+    // When the scroll view is scrolled, update the table view position
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        updateTableViewPosition()
+    }
+}
