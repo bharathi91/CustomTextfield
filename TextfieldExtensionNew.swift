@@ -74,6 +74,13 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
                 if let textFieldFrame = self.superview?.convert(self.frame, to: window) {
                     let tableHeight: CGFloat = 150
                     tableView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: tableHeight)
+
+                     // Disable gesture recognizers temporarily
+                if let gestureRecognizers = window.gestureRecognizers {
+                    for recognizer in gestureRecognizers {
+                        recognizer.isEnabled = false
+                    }
+                }
                 }
             }
         } else {
@@ -83,8 +90,17 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     }
     
     // Method to hide suggestions table view
+      // Hide the suggestions table view
     private func hideSuggestionsTableView() {
         suggestionsTableView?.isHidden = true
+        
+        // Re-enable gesture recognizers once the table view is hidden
+        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+           let gestureRecognizers = window.gestureRecognizers {
+            for recognizer in gestureRecognizers {
+                recognizer.isEnabled = true
+            }
+        }
     }
     
     // UITableView DataSource Methods
