@@ -124,6 +124,23 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
         
         return super.point(inside: point, with: event)
     }
+ // Helper method to find the height constraint for the table view
+    func getTableViewHeightConstraint() -> NSLayoutConstraint? {
+        guard let tableView = suggestionsTableView else {
+            return nil
+        }
+        
+        // Search for the height constraint in the tableView's superview's constraints
+        if let superview = tableView.superview {
+            for constraint in superview.constraints {
+                // Look for a constraint that affects the height of the table view
+                if constraint.firstItem as? UIView == tableView && constraint.firstAttribute == .height {
+                    return constraint
+                }
+            }
+        }
+        return nil
+    }
 }
 
 // Helper extension to safely access array index
@@ -132,3 +149,11 @@ extension Collection {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
+if let heightConstraint = textField.getTableViewHeightConstraint() {
+    // You can now access the height of the table view
+    print("Height Constraint: \(heightConstraint.constant)")
+} else {
+    print("No height constraint found for the table view.")
+}
+
