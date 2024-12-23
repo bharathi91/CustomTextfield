@@ -29,6 +29,12 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
         self.suggestionsTableView?.backgroundColor = .clear
         self.suggestionsTableView?.allowsSelection = true
         self.suggestionsTableView?.isUserInteractionEnabled = true
+
+ // Add border and corner radius
+    self.suggestionsTableView?.layer.borderWidth = 1
+    self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor // Change the color as needed
+    self.suggestionsTableView?.layer.cornerRadius = 8 // Adjust the radius as needed
+    self.suggestionsTableView?.layer.masksToBounds = true // Ensure the corners are clipped
     }
     
     // Detect when user types the @ symbol
