@@ -116,26 +116,35 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     
     // UITableView Delegate & DataSource methods
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return 0 }
-        
-        let domainPrefix = text[text.index(after: atIndex)...]
-        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
-        
-        return filteredDomains.count
+    guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { 
+        return 0 
     }
     
+    let domainPrefix = text[text.index(after: atIndex)...]
+    let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+    
+    return filteredDomains.count
+}
+
+    
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
-        
-        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return cell }
-        
-        let domainPrefix = text[text.index(after: atIndex)...]
-        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+    let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
+    
+    guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { 
+        return cell 
+    }
+    
+    let domainPrefix = text[text.index(after: atIndex)...]
+    let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+    
+    if indexPath.row < filteredDomains.count {
         cell.backgroundColor = .white
         cell.textLabel?.text = filteredDomains[indexPath.row]
-        
-        return cell
     }
+    
+    return cell
+}
+
     
     // Handle the selection of a domain
     public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
