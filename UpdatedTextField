@@ -1,0 +1,132 @@
+extension UITextField: UITableViewDelegate, UITableViewDataSource {
+    
+    // Private properties to handle the table view
+    private struct AssociatedKeys {
+        static var suggestionsTableView = "suggestionsTableView"
+    }
+    
+    private var suggestionsTableView: UITableView? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.suggestionsTableView) as? UITableView
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.suggestionsTableView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
+    private var domainSuggestions: [String] {
+        return ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "google.com", "proton.com", "asl.com", "hotstar.com"]
+    }
+    
+    // Setup function to add UITableView below the UITextField
+    func setupEmailDomainSuggestionsTable(tableView: UITableView) {
+        guard suggestionsTableView == nil else { return } // Prevent multiple setup calls
+        self.suggestionsTableView = tableView
+        //let tableView = UITableView()
+        
+        self.suggestionsTableView?.delegate = self
+        self.suggestionsTableView?.dataSource = self
+        self.suggestionsTableView?.isHidden = true
+        self.suggestionsTableView?.backgroundColor = .clear
+        self.suggestionsTableView?.allowsSelection = true
+        self.suggestionsTableView?.isUserInteractionEnabled = true
+    }
+
+    // Detect when user types the @ symbol
+    func handleTextChanged() {
+        guard let text = self.text else { return }
+        
+        // Show suggestions only after '@' is typed
+        if let atIndex = text.firstIndex(of: "@") {
+            let domainPrefix = text[text.index(after: atIndex)...]
+            let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+            self.showSuggestions(filteredDomains)
+        } else {
+            self.hideSuggestionsTableView()
+        }
+    }
+
+    // Show or update the suggestions in the table view
+    private func showSuggestions(_ domains: [String]) {
+        guard let tableView = suggestionsTableView else { return }
+        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
+            // Disable gesture recognizers temporarily
+            if let gestureRecognizers = window.gestureRecognizers {
+                for recognizer in gestureRecognizers {
+                    recognizer.isEnabled = false
+                }
+            }
+        }
+        tableView.isHidden = false
+        
+        // Update table view data
+        tableView.reloadData()
+    }
+
+    // Hide suggestions if no '@' or if list is empty
+    private func hideSuggestionsTableView() {
+        suggestionsTableView?.isHidden = true
+        
+        // Re-enable gesture recognizers once the table view is hidden
+        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+           let gestureRecognizers = window.gestureRecognizers {
+            for recognizer in gestureRecognizers {
+                recognizer.isEnabled = true
+            }
+        }
+    }
+
+    // UITableView Delegate & DataSource methods
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return 0 }
+        
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        return filteredDomains.count
+    }
+
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
+        
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return cell }
+        
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        cell.backgroundColor = .white
+        cell.textLabel?.text = filteredDomains[indexPath.row]
+        
+        return cell
+    }
+
+    // Handle the selection of a domain
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return }
+        
+        var domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        if let domain = filteredDomains[safe: indexPath.row] {
+            self.text = text.prefix(upTo: atIndex) + "@" + domain
+            hideSuggestionsTableView()
+        }
+    }
+
+    // Common initialization for both frame-based and storyboard-based instances
+    func commonInit(tableView: UITableView) {
+        // Add target for editing changes
+        self.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        setupEmailDomainSuggestionsTable(tableView: tableView)
+    }
+
+    @objc private func textFieldDidChange() {
+        handleTextChanged()
+    }
+}
+
+// Helper extension to safely access array index
+extension Collection {
+    subscript(safe index: Index) -> Element? {
+        return indices.contains(index) ? self[index] : nil
+    }
+}
