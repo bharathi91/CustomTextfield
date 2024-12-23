@@ -49,16 +49,7 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     private func showSuggestions(_ domains: [String]) {
         guard let tableView = suggestionsTableView else { return }
         
-        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) {
-            // Disable gesture recognizers temporarily
-            if let gestureRecognizers = window.gestureRecognizers {
-                for recognizer in gestureRecognizers {
-                    recognizer.isEnabled = false
-                }
-            }
-        }
-        
-        // Make sure the table view is not hidden and set its frame properly
+        // Ensure the table view is not hidden and set its frame properly
         tableView.isHidden = false
         tableView.reloadData()
         
@@ -72,14 +63,6 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     // Hide suggestions if no '@' or if list is empty
     private func hideSuggestionsTableView() {
         suggestionsTableView?.isHidden = true
-        
-        // Re-enable gesture recognizers once the table view is hidden
-        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
-           let gestureRecognizers = window.gestureRecognizers {
-            for recognizer in gestureRecognizers {
-                recognizer.isEnabled = true
-            }
-        }
     }
 
     // UITableView Delegate & DataSource methods
@@ -127,16 +110,19 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     @objc private func textFieldDidChange() {
         handleTextChanged()
     }
-
-// Override hitTest to make sure touches pass through to the table view when the table is shown
-    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        // If the table view is visible and the touch is within its bounds, let the table view handle the touch
-        if let tableView = suggestionsTableView, !tableView.isHidden, tableView.frame.contains(point) {
-            return tableView.hitTest(self.convert(point, to: tableView), with: event)
+    
+    // Ensure touches pass to table view when it's visible
+    override open func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard let tableView = suggestionsTableView, !tableView.isHidden else {
+            return super.point(inside: point, with: event)
         }
         
-        // Otherwise, pass the touch event to the default responder chain (UITextField itself)
-        return super.hitTest(point, with: event)
+        // Check if the touch is inside the table view's bounds
+        if tableView.frame.contains(self.convert(point, to: tableView)) {
+            return tableView.point(inside: self.convert(point, to: tableView), with: event)
+        }
+        
+        return super.point(inside: point, with: event)
     }
 }
 
