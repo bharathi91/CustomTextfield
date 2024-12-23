@@ -127,6 +127,17 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     @objc private func textFieldDidChange() {
         handleTextChanged()
     }
+
+// Override hitTest to make sure touches pass through to the table view when the table is shown
+    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // If the table view is visible and the touch is within its bounds, let the table view handle the touch
+        if let tableView = suggestionsTableView, !tableView.isHidden, tableView.frame.contains(point) {
+            return tableView.hitTest(self.convert(point, to: tableView), with: event)
+        }
+        
+        // Otherwise, pass the touch event to the default responder chain (UITextField itself)
+        return super.hitTest(point, with: event)
+    }
 }
 
 // Helper extension to safely access array index
