@@ -181,3 +181,35 @@ if let collectionView = self.findCollectionView() {
     print("No collection view found")
 }
 
+private func showSuggestions(_ domains: [String]) {
+        guard let tableView = suggestionsTableView else { return }
+        
+        if let table = tableView.superview(of: UIStackView.self) {
+            if let gestureRecognizers = table.gestureRecognizers {
+                for recognizer in gestureRecognizers {
+                    recognizer.isEnabled = false
+                    print("Recognizer tag: \(recognizer.view?.tag)")
+                }
+            }
+        }
+        
+        // Make sure the table view is not hidden and set its frame properly
+        tableView.isHidden = false
+        tableView.reloadData()
+        
+        let maxHeight:CGFloat = 200
+        let totalHeight = CGFloat(domains.count) * 44
+        let adjustedHeight = min(totalHeight, maxHeight)
+        // Ensure tableView is positioned below the text field (you can customize this logic)
+        if let textFieldSuperview = self.superview {
+            let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
+            tableView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: adjustedHeight)
+            for cons in tableView.constraints.enumerated() {
+                if cons.element.identifier == "SuggestionTableHeight" {
+                    cons.element.constant = adjustedHeight
+                }
+            }
+            // Example frame
+            tableView.layoutIfNeeded()
+        }
+    }
