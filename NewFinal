@@ -191,3 +191,24 @@ extension UITextField: UITextFieldDelegate, UITableViewDelegate, UITableViewData
         return super.hitTest(point, with: event)
     }
 }
+
+  import UIKit
+
+extension UICollectionViewCell {
+    
+    // This method walks up the superview chain to find the UICollectionView
+    func findCollectionView() -> UICollectionView? {
+        var currentView: UIView? = self
+        
+        // Traverse the superview chain
+        while let superview = currentView?.superview {
+            if let collectionView = superview as? UICollectionView {
+                return collectionView
+            }
+            currentView = superview
+        }
+        
+        return nil
+    }
+}
+
