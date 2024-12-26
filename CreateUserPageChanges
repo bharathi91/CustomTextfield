@@ -1,0 +1,201 @@
+extension UITextField: UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate {
+    
+    private struct AssociatedKeys {
+        static var suggestionsTableView = "suggestionsTableView"
+    }
+    
+    private var suggestionsTableView: UITableView? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.suggestionsTableView) as? UITableView
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.suggestionsTableView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
+    private var domainSuggestions: [String] {
+        let domainData = LaunchDarklyManager.shared.getJsonData(LaunchDarklyManager.FeatureFlag.domainList)
+        print(domainData)
+        return domainData.domains
+        //return ["gmail.com", "yahoo.com", "hotmail.com","maildrop.cc", "outlook.com", "icloud.com", "aol.com", "google.com", "proton.com", "asl.com", "hotstar.com"]
+    }
+    
+    // Setup function to add UITableView below the UITextField
+    func setupEmailDomainSuggestionsTable(tableView: UITableView) {
+        guard suggestionsTableView == nil else { return }
+        self.suggestionsTableView = tableView
+        
+        // Set up the table view properties
+        self.suggestionsTableView?.delegate = self
+        self.suggestionsTableView?.dataSource = self
+        self.suggestionsTableView?.isHidden = true
+        self.suggestionsTableView?.backgroundColor = .clear
+        self.suggestionsTableView?.allowsSelection = true
+        self.suggestionsTableView?.isUserInteractionEnabled = true
+        self.suggestionsTableView?.separatorStyle = .none
+        // Add border and corner radius
+        self.suggestionsTableView?.layer.borderWidth = 1
+        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor // Change the color as needed
+        self.suggestionsTableView?.layer.cornerRadius = 8 // Adjust the radius as needed
+        self.suggestionsTableView?.layer.masksToBounds = true // Ensure the corners are clipped
+    }
+    
+    // Detect when user types the @ symbol
+    func handleTextChanged() {
+        guard let text = self.text else { return }
+        
+        // Show suggestions only after '@' is typed
+        if let atIndex = text.firstIndex(of: "@") {
+            let domainPrefix = text[text.index(after: atIndex)...]
+            let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+            self.showSuggestions(filteredDomains)
+        } else {
+            self.hideSuggestionsTableView()
+        }
+    }
+    // Helper method to find the height constraint for the table view
+    func getTableViewHeightConstraint() -> NSLayoutConstraint? {
+        guard let tableView = suggestionsTableView else {
+            return nil
+        }
+        
+        // Search for the height constraint in the tableView's superview's constraints
+        if let superview = tableView.superview {
+            for constraint in superview.constraints {
+                // Look for a constraint that affects the height of the table view
+                if constraint.firstItem as? UIView == tableView && constraint.firstAttribute == .height {
+                    return constraint
+                }
+            }
+        }
+        return nil
+    }
+    // Show or update the suggestions in the table view
+    private func showSuggestions(_ domains: [String]) {
+        guard let tableView = suggestionsTableView else { return }
+        
+        if let table = tableView.superview(of: UIStackView.self) {
+            if let gestureRecognizers = table.gestureRecognizers {
+                for recognizer in gestureRecognizers {
+                    recognizer.isEnabled = false
+                    print("Recognizer tag: \(recognizer.view?.tag)")
+                }
+            }
+        }
+        
+        // Make sure the table view is not hidden and set its frame properly
+        tableView.isHidden = false
+        tableView.reloadData()
+        
+        let maxHeight:CGFloat = 200
+        let totalHeight = CGFloat(domains.count) * 44
+        let adjustedHeight = min(totalHeight, maxHeight)
+        // Ensure tableView is positioned below the text field (you can customize this logic)
+        if let textFieldSuperview = self.superview {
+            let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
+            tableView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: adjustedHeight)
+            for cons in tableView.constraints.enumerated() {
+                if cons.element.identifier == "SuggestionTableHeight" {
+                    cons.element.constant = adjustedHeight
+                }
+            }
+            // Example frame
+            tableView.layoutIfNeeded()
+        }
+    }
+    
+    // Hide suggestions if no '@' or if list is empty
+    private func hideSuggestionsTableView() {
+        suggestionsTableView?.isHidden = true
+        
+        // Re-enable gesture recognizers once the table view is hidden
+//        if let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }),
+//           let gestureRecognizers = window.gestureRecognizers {
+//            for recognizer in gestureRecognizers {
+//                recognizer.isEnabled = true
+//            }
+//        }
+        
+        if let table = suggestionsTableView?.superview(of: UIStackView.self) {
+            if let gestureRecognizers = table.gestureRecognizers {
+                for recognizer in gestureRecognizers {
+                    recognizer.isEnabled = false
+                    print("Recognizer tag: \(recognizer.view?.tag)")
+                }
+            }
+        }
+    }
+    
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        hideSuggestionsTableView()
+    }
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        handleTextChanged()
+    }
+    // UITableView Delegate & DataSource methods
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else {
+            return 0
+        }
+        
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        return filteredDomains.count
+    }
+    
+    
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
+        
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else {
+            return cell
+        }
+        
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        if indexPath.row < filteredDomains.count {
+            cell.backgroundColor = .white
+            cell.textLabel?.text = filteredDomains[indexPath.row]
+        }
+        
+        return cell
+    }
+    
+    // Handle the selection of a domain
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return }
+        
+        var domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        if let domain = filteredDomains[safe: indexPath.row] {
+            self.text = text.prefix(upTo: atIndex) + "@" + domain
+            hideSuggestionsTableView()
+        }
+    }
+    
+    // Common initialization for both frame-based and storyboard-based instances
+    func commonInit(tableView: UITableView) {
+        self.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        self.delegate = self
+        setupEmailDomainSuggestionsTable(tableView: tableView)
+    }
+    
+    @objc private func textFieldDidChange() {
+        handleTextChanged()
+    }
+    
+    
+    // Override hitTest to make sure touches pass through to the table view when the table is shown
+    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // If the table view is visible and the touch is within its bounds, let the table view handle the touch
+        if let tableView = suggestionsTableView, !tableView.isHidden, tableView.frame.contains(point) {
+            return tableView.hitTest(self.convert(point, to: tableView), with: event)
+        }
+        
+        // Otherwise, pass the touch event to the default responder chain (UITextField itself)
+        return super.hitTest(point, with: event)
+    }
+}
