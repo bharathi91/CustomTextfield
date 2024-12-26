@@ -13,7 +13,15 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
             objc_setAssociatedObject(self, &AssociatedKeys.suggestionsTableView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
-    
+    private var suggestionsScrollView: UIScrollView? {
+    get {
+        return objc_getAssociatedObject(self, &AssociatedKeys.suggestionsScrollView) as? UIScrollView
+    }
+    set {
+        objc_setAssociatedObject(self, &AssociatedKeys.suggestionsScrollView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+}
+
     private var domainSuggestions: [String] {
         return ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "aol.com", "google.com", "proton.com", "asl.com", "hotstar.com"]
     }
