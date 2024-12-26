@@ -157,3 +157,27 @@ extension Collection {
         return indices.contains(index) ? self[index] : nil
     }
 }
+
+extension UICollectionViewCell {
+    func findCollectionView() -> UICollectionView? {
+        var view: UIView? = self.superview
+        while view != nil {
+            if let collectionView = view as? UICollectionView {
+                return collectionView
+            }
+            view = view?.superview
+        }
+        return nil
+    }
+}
+
+
+// Inside a UICollectionViewCell subclass (e.g., CustomCell)
+
+if let collectionView = self.findCollectionView() {
+    // Do something with the collectionView, like scroll to a specific item or section
+    print("Found the collection view: \(collectionView)")
+} else {
+    print("No collection view found")
+}
+
