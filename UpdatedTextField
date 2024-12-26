@@ -181,35 +181,41 @@ if let collectionView = self.findCollectionView() {
     print("No collection view found")
 }
 
-private func showSuggestions(_ domains: [String]) {
-        guard let tableView = suggestionsTableView else { return }
-        
-        if let table = tableView.superview(of: UIStackView.self) {
-            if let gestureRecognizers = table.gestureRecognizers {
-                for recognizer in gestureRecognizers {
-                    recognizer.isEnabled = false
-                    print("Recognizer tag: \(recognizer.view?.tag)")
-                }
+private func showSuggestions<T: UIScrollView>(_ domains: [String], scrollView: T) {
+    guard let view = scrollView as? UIView else { return }
+    
+    if let parentView = view.superview(of: UIStackView.self) {
+        if let gestureRecognizers = parentView.gestureRecognizers {
+            for recognizer in gestureRecognizers {
+                recognizer.isEnabled = false
+                print("Recognizer tag: \(recognizer.view?.tag ?? -1)")
             }
-        }
-        
-        // Make sure the table view is not hidden and set its frame properly
-        tableView.isHidden = false
-        tableView.reloadData()
-        
-        let maxHeight:CGFloat = 200
-        let totalHeight = CGFloat(domains.count) * 44
-        let adjustedHeight = min(totalHeight, maxHeight)
-        // Ensure tableView is positioned below the text field (you can customize this logic)
-        if let textFieldSuperview = self.superview {
-            let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
-            tableView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: adjustedHeight)
-            for cons in tableView.constraints.enumerated() {
-                if cons.element.identifier == "SuggestionTableHeight" {
-                    cons.element.constant = adjustedHeight
-                }
-            }
-            // Example frame
-            tableView.layoutIfNeeded()
         }
     }
+    
+    // Make sure the scroll view is not hidden and reload its data
+    if let tableView = scrollView as? UITableView {
+        tableView.reloadData()
+    } else if let collectionView = scrollView as? UICollectionView {
+        collectionView.reloadData()
+    }
+    
+    let maxHeight: CGFloat = 200
+    let totalHeight = CGFloat(domains.count) * 44
+    let adjustedHeight = min(totalHeight, maxHeight)
+    
+    // Ensure the scroll view is positioned below the text field (you can customize this logic)
+    if let textFieldSuperview = self.superview {
+        let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
+        scrollView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: adjustedHeight)
+        
+        for cons in scrollView.constraints.enumerated() {
+            if cons.element.identifier == "SuggestionTableHeight" {
+                cons.element.constant = adjustedHeight
+            }
+        }
+        
+        // Update layout
+        scrollView.layoutIfNeeded()
+    }
+}
