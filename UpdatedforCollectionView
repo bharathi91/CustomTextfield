@@ -1,0 +1,174 @@
+import UIKit
+
+extension UITextField: UITextFieldDelegate {
+
+    private struct AssociatedKeys {
+        static var suggestionsView = "suggestionsView"
+        static var isUsingCollectionView = "isUsingCollectionView"
+    }
+    
+    private var suggestionsView: UIView? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.suggestionsView) as? UIView
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.suggestionsView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
+    private var isUsingCollectionView: Bool {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.isUsingCollectionView) as? Bool ?? false
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.isUsingCollectionView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
+    private var domainSuggestions: [String] {
+        let domainData = LaunchDarklyManager.shared.getJsonData(LaunchDarklyManager.FeatureFlag.domainList)
+        return domainData.domains
+    }
+    
+    func setupEmailDomainSuggestionsView(collectionView: UICollectionView? = nil, tableView: UITableView? = nil) {
+        if let existingView = suggestionsView {
+            existingView.removeFromSuperview() // Remove any existing view before adding new one
+        }
+
+        if let tableView = tableView {
+            self.suggestionsView = tableView
+            self.isUsingCollectionView = false
+        } else if let collectionView = collectionView {
+            self.suggestionsView = collectionView
+            self.isUsingCollectionView = true
+        }
+        
+        // Set up the table or collection view properties
+        if let suggestionsView = suggestionsView {
+            if let tableView = suggestionsView as? UITableView {
+                tableView.delegate = self
+                tableView.dataSource = self
+                tableView.isHidden = true
+                tableView.backgroundColor = .clear
+                tableView.separatorStyle = .none
+            } else if let collectionView = suggestionsView as? UICollectionView {
+                collectionView.delegate = self
+                collectionView.dataSource = self
+                collectionView.isHidden = true
+                collectionView.backgroundColor = .clear
+            }
+            
+            // Set border, corner radius, etc. on the suggestions view (both TableView & CollectionView)
+            suggestionsView.layer.borderWidth = 1
+            suggestionsView.layer.borderColor = UIColor.lightGray.cgColor
+            suggestionsView.layer.cornerRadius = 8
+            suggestionsView.layer.masksToBounds = true
+        }
+    }
+    
+    func handleTextChanged() {
+        guard let text = self.text else { return }
+        
+        if let atIndex = text.firstIndex(of: "@") {
+            let domainPrefix = text[text.index(after: atIndex)...]
+            let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+            self.showSuggestions(filteredDomains)
+        } else {
+            self.hideSuggestionsView()
+        }
+    }
+    
+    private func showSuggestions(_ domains: [String]) {
+        guard let suggestionsView = suggestionsView else { return }
+        
+        // Show the suggestions view (UITableView or UICollectionView)
+        suggestionsView.isHidden = false
+        if let tableView = suggestionsView as? UITableView {
+            tableView.reloadData()
+        } else if let collectionView = suggestionsView as? UICollectionView {
+            collectionView.reloadData()
+        }
+        
+        let maxHeight: CGFloat = 200
+        let totalHeight = CGFloat(domains.count) * 44
+        let adjustedHeight = min(totalHeight, maxHeight)
+        
+        if let textFieldSuperview = self.superview {
+            let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
+            suggestionsView.frame = CGRect(x: textFieldFrame.origin.x, y: textFieldFrame.maxY, width: textFieldFrame.width, height: adjustedHeight)
+            suggestionsView.layoutIfNeeded()
+        }
+    }
+    
+    private func hideSuggestionsView() {
+        suggestionsView?.isHidden = true
+    }
+    
+    // UITableView or UICollectionView Delegate & DataSource methods
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return filteredDomainSuggestions().count
+    }
+    
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
+        cell.textLabel?.text = filteredDomainSuggestions()[indexPath.row]
+        return cell
+    }
+    
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        self.text = "\(self.text?.prefix(upTo: self.text!.firstIndex(of: "@") ?? self.text!.startIndex) ?? "")@\(filteredDomainSuggestions()[indexPath.row])"
+        hideSuggestionsView()
+    }
+    
+    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return filteredDomainSuggestions().count
+    }
+    
+    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "DomainCell", for: indexPath)
+        if let label = cell.contentView.subviews.first(where: { $0 is UILabel }) as? UILabel {
+            label.text = filteredDomainSuggestions()[indexPath.row]
+        }
+        return cell
+    }
+    
+    public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        self.text = "\(self.text?.prefix(upTo: self.text!.firstIndex(of: "@") ?? self.text!.startIndex) ?? "")@\(filteredDomainSuggestions()[indexPath.row])"
+        hideSuggestionsView()
+    }
+    
+    private func filteredDomainSuggestions() -> [String] {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else {
+            return []
+        }
+        let domainPrefix = text[text.index(after: atIndex)...]
+        return domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+    }
+    
+    public func textFieldDidEndEditing(_ textField: UITextField) {
+        hideSuggestionsView()
+    }
+    
+    public func textFieldDidBeginEditing(_ textField: UITextField) {
+        handleTextChanged()
+    }
+    
+    // Common initialization for both UITableView and UICollectionView
+    func commonInit(tableView: UITableView? = nil, collectionView: UICollectionView? = nil) {
+        self.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        self.delegate = self
+        setupEmailDomainSuggestionsView(collectionView: collectionView, tableView: tableView)
+    }
+    
+    @objc private func textFieldDidChange() {
+        handleTextChanged()
+    }
+    
+    // Override hitTest to make sure touches pass through to the table view or collection view when shown
+    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let suggestionsView = suggestionsView, !suggestionsView.isHidden, suggestionsView.frame.contains(point) {
+            return suggestionsView.hitTest(self.convert(point, to: suggestionsView), with: event)
+        }
+        return super.hitTest(point, with: event)
+    }
+}
