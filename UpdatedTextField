@@ -19,11 +19,15 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
     }
     
     // Setup function to add UITableView below the UITextField
-     func setupEmailDomainSuggestionsTable(tableView: UITableView) {
-        guard suggestionsTableView == nil else { return }
+     // Setup function to add any scroll view (UITableView or UICollectionView)
+func setupSuggestionsView<T: UIScrollView>(scrollView: T) {
+    guard suggestionsTableView == nil else { return }
+    
+    // Ensure the passed scrollView is either a UITableView or UICollectionView
+    if let tableView = scrollView as? UITableView {
         self.suggestionsTableView = tableView
         
-        // Set up the table view properties
+        // Set up UITableView properties
         self.suggestionsTableView?.delegate = self
         self.suggestionsTableView?.dataSource = self
         self.suggestionsTableView?.isHidden = true
@@ -31,12 +35,29 @@ extension UITextField: UITableViewDelegate, UITableViewDataSource {
         self.suggestionsTableView?.allowsSelection = true
         self.suggestionsTableView?.isUserInteractionEnabled = true
         self.suggestionsTableView?.separatorStyle = .none
-        // Add border and corner radius
         self.suggestionsTableView?.layer.borderWidth = 1
-        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor // Change the color as needed
-        self.suggestionsTableView?.layer.cornerRadius = 8 // Adjust the radius as needed
-        self.suggestionsTableView?.layer.masksToBounds = true // Ensure the corners are clipped
+        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor
+        self.suggestionsTableView?.layer.cornerRadius = 8
+        self.suggestionsTableView?.layer.masksToBounds = true
     }
+    else if let collectionView = scrollView as? UICollectionView {
+        self.suggestionsTableView = collectionView as? UITableView
+        
+        // Set up UICollectionView properties
+        self.suggestionsTableView?.delegate = self
+        self.suggestionsTableView?.dataSource = self
+        self.suggestionsTableView?.isHidden = true
+        self.suggestionsTableView?.backgroundColor = .clear
+        self.suggestionsTableView?.allowsSelection = true
+        self.suggestionsTableView?.isUserInteractionEnabled = true
+        self.suggestionsTableView?.separatorStyle = .none
+        self.suggestionsTableView?.layer.borderWidth = 1
+        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor
+        self.suggestionsTableView?.layer.cornerRadius = 8
+        self.suggestionsTableView?.layer.masksToBounds = true
+    }
+}
+
 
     // Detect when user types the @ symbol
     func handleTextChanged() {
