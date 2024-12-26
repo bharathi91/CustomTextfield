@@ -1,0 +1,193 @@
+extension UITextField: UITextFieldDelegate, UITableViewDelegate, UITableViewDataSource {
+
+    private struct AssociatedKeys {
+        static var suggestionsTableView = "suggestionsTableView"
+    }
+    
+    private var suggestionsTableView: UITableView? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.suggestionsTableView) as? UITableView
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.suggestionsTableView, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+    
+    private var domainSuggestions: [String] {
+        let domainData = LaunchDarklyManager.shared.getJsonData(LaunchDarklyManager.FeatureFlag.domainList)
+        return domainData.domains
+    }
+
+    // Setup method to add UITableView below the UITextField
+    func setupEmailDomainSuggestionsTable(tableView: UITableView) {
+        guard suggestionsTableView == nil else { return }
+        self.suggestionsTableView = tableView
+
+        // Set up the table view properties
+        self.suggestionsTableView?.delegate = self
+        self.suggestionsTableView?.dataSource = self
+        self.suggestionsTableView?.isHidden = true
+        self.suggestionsTableView?.backgroundColor = .clear
+        self.suggestionsTableView?.separatorStyle = .none
+        self.suggestionsTableView?.allowsSelection = true
+
+        // Set border, corner radius, etc. on the suggestions table view
+        self.suggestionsTableView?.layer.borderWidth = 1
+        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor
+        self.suggestionsTableView?.layer.cornerRadius = 8
+        self.suggestionsTableView?.layer.masksToBounds = true
+    }
+
+    // Handle text changes to show domain suggestions when '@' is typed
+    func handleTextChanged() {
+        guard let text = self.text else { return }
+
+        // Show suggestions only after '@' is typed
+        if let atIndex = text.firstIndex(of: "@") {
+            let domainPrefix = text[text.index(after: atIndex)...]
+            let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+            self.showSuggestions(filteredDomains)
+        } else {
+            self.hideSuggestionsTableView()
+        }
+    }
+
+    // Helper method to find the height constraint for the table view
+    func getTableViewHeightConstraint() -> NSLayoutConstraint? {
+        guard let tableView = suggestionsTableView else {
+            return nil
+        }
+
+        // Search for the height constraint in the tableView's superview's constraints
+        if let superview = tableView.superview {
+            for constraint in superview.constraints {
+                if constraint.firstItem as? UIView == tableView && constraint.firstAttribute == .height {
+                    return constraint
+                }
+            }
+        }
+        return nil
+    }
+
+    // Show or update the suggestions in the table view
+    private func showSuggestions(_ domains: [String]) {
+        guard let tableView = suggestionsTableView else { return }
+
+        // Ensure the table view is not hidden and reload its data
+        tableView.isHidden = false
+        tableView.reloadData()
+
+        // Calculate the maximum height and adjusted height for the table view
+        let maxHeight: CGFloat = 200
+        let totalHeight = CGFloat(domains.count) * 44
+        let adjustedHeight = min(totalHeight, maxHeight)
+
+        // Ensure tableView is positioned below the text field
+        if let textFieldSuperview = self.superview {
+            let textFieldFrame = self.convert(self.bounds, to: textFieldSuperview)
+
+            // Adjust the frame for the suggestions table view based on the superview type
+            tableView.frame = CGRect(x: textFieldFrame.origin.x,
+                                     y: textFieldFrame.maxY,
+                                     width: textFieldFrame.width,
+                                     height: adjustedHeight)
+
+            for cons in tableView.constraints {
+                if cons.identifier == "SuggestionTableHeight" {
+                    cons.constant = adjustedHeight
+                }
+            }
+            tableView.layoutIfNeeded()
+        }
+    }
+
+    // Hide suggestions if no '@' or if list is empty
+    private func hideSuggestionsTableView() {
+        suggestionsTableView?.isHidden = true
+    }
+
+    // UITableViewDelegate and DataSource methods
+    public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else {
+            return 0
+        }
+        let domainPrefix = text[text.index(after: atIndex)...]
+        return domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }.count
+    }
+
+    public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "DomainCell") ?? UITableViewCell(style: .default, reuseIdentifier: "DomainCell")
+        
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else {
+            return cell
+        }
+        
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        if indexPath.row < filteredDomains.count {
+            cell.textLabel?.text = filteredDomains[indexPath.row]
+        }
+
+        return cell
+    }
+
+    // Handle the selection of a domain
+    public func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard let text = self.text, let atIndex = text.firstIndex(of: "@") else { return }
+
+        let domainPrefix = text[text.index(after: atIndex)...]
+        let filteredDomains = domainSuggestions.filter { $0.hasPrefix(String(domainPrefix)) }
+        
+        if let domain = filteredDomains[safe: indexPath.row] {
+            self.text = text.prefix(upTo: atIndex) + "@" + domain
+            hideSuggestionsTableView()
+        }
+    }
+
+    // Common initialization for both frame-based and storyboard-based instances
+    func commonInit(tableView: UITableView? = nil, collectionView: UICollectionView? = nil) {
+        self.addTarget(self, action: #selector(textFieldDidChange), for: .editingChanged)
+        self.delegate = self
+
+        if let tableView = tableView {
+            setupEmailDomainSuggestionsTable(tableView: tableView)
+        } else if let collectionView = collectionView {
+            setupCollectionView(collectionView: collectionView)
+        }
+    }
+
+    @objc private func textFieldDidChange() {
+        handleTextChanged()
+    }
+
+    // Setup method for UICollectionView
+    private func setupCollectionView(collectionView: UICollectionView) {
+        guard suggestionsTableView == nil else { return }
+        
+        // Setup a UITableView for the suggestions view within the collection view
+        self.suggestionsTableView = UITableView()
+        self.suggestionsTableView?.delegate = self
+        self.suggestionsTableView?.dataSource = self
+        self.suggestionsTableView?.isHidden = true
+        self.suggestionsTableView?.backgroundColor = .clear
+        self.suggestionsTableView?.separatorStyle = .none
+        self.suggestionsTableView?.allowsSelection = true
+        
+        // Setup the appearance of the suggestions table view
+        self.suggestionsTableView?.layer.borderWidth = 1
+        self.suggestionsTableView?.layer.borderColor = UIColor.lightGray.cgColor
+        self.suggestionsTableView?.layer.cornerRadius = 8
+        self.suggestionsTableView?.layer.masksToBounds = true
+
+        collectionView.addSubview(suggestionsTableView!)
+    }
+
+    // Override hitTest to make sure touches pass through to the table view when it is shown
+    override open func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        if let tableView = suggestionsTableView, !tableView.isHidden, tableView.frame.contains(point) {
+            return tableView.hitTest(self.convert(point, to: tableView), with: event)
+        }
+        return super.hitTest(point, with: event)
+    }
+}
