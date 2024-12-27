@@ -1,0 +1,94 @@
+import UIKit
+
+class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+
+    // Example view to place above the stackView
+    var labelView: UILabel!
+    
+    // Your UIStackView
+    var stackView: UIStackView!
+    
+    // Your UITableView
+    var tableView: UITableView!
+    
+    // A flag to track visibility of the UITableView
+    var isTableViewVisible = false
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        // Set up the main view background color (just for visibility)
+        view.backgroundColor = .white
+        
+        // Initialize the labelView (can be any view)
+        labelView = UILabel()
+        labelView.text = "This is a label"
+        labelView.textAlignment = .center
+        labelView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(labelView)
+
+        // Add constraints to labelView
+        NSLayoutConstraint.activate([
+            labelView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            labelView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            labelView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            labelView.heightAnchor.constraint(equalToConstant: 50)  // Set a fixed height for the label
+        ])
+        
+        // Initialize the stackView
+        stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.spacing = 10
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stackView)
+
+        // Add constraints to stackView to position it below labelView
+        NSLayoutConstraint.activate([
+            stackView.topAnchor.constraint(equalTo: labelView.bottomAnchor, constant: 20),
+            stackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            stackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
+        ])
+        
+        // Create the tableView
+        tableView = UITableView()
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.isHidden = true  // Initially hidden
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Add tableView to the stackView
+        stackView.addArrangedSubview(tableView)
+
+        // Add a button to toggle the visibility of the tableView
+        let toggleButton = UIButton(type: .system)
+        toggleButton.setTitle("Toggle Table", for: .normal)
+        toggleButton.addTarget(self, action: #selector(toggleTableViewVisibility), for: .touchUpInside)
+        
+        // Add the toggleButton to the stackView
+        stackView.addArrangedSubview(toggleButton)
+    }
+
+    @objc func toggleTableViewVisibility() {
+        isTableViewVisible.toggle()
+        
+        // Show or hide the tableView
+        tableView.isHidden = !isTableViewVisible
+        
+        // Optional: Animate the visibility change
+        UIView.animate(withDuration: 0.3) {
+            self.view.layoutIfNeeded()
+        }
+    }
+    
+    // MARK: - UITableViewDataSource Methods
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return 10 // Example data
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") ??
+            UITableViewCell(style: .default, reuseIdentifier: "cell")
+        cell.textLabel?.text = "Row \(indexPath.row)"
+        return cell
+    }
+}
