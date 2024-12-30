@@ -1,0 +1,16 @@
+extension UICollectionViewCell {
+    var viewController: UIViewController? {
+        var responder: UIResponder? = self
+        while responder != nil {
+            if let viewController = responder as? UIViewController {
+                return viewController
+            }
+            responder = responder?.next
+        }
+        return nil
+    }
+}
+if let viewController = self.viewController {
+    // You have access to the view controller now
+    print("Found the view controller: \(viewController)")
+}
