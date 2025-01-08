@@ -1,0 +1,225 @@
+//
+//  TextFieldExtensioTestVC.swift
+//  SampleTestProject
+//
+//  Created by Bharathi's Macbook Air on 17/12/24.
+//
+
+import UIKit
+
+import UIKit
+
+class TextFieldExtensioTestVC: UIViewController {
+
+    // Define the email text field
+    let emailTextField = UITextField()
+    let emailTextField2 = UITextField()
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        setupEmailTextField()
+    }
+
+    func setupEmailTextField() {
+       
+        emailTextField.placeholder = "Enter your email"
+        emailTextField.borderStyle = .roundedRect
+        emailTextField.frame = CGRect(x: 20, y: 100, width: view.bounds.width - 40, height: 40)
+        emailTextField.autocorrectionType = .no
+        emailTextField.spellCheckingType = .no
+        view.addSubview(emailTextField)
+        emailTextField.configureDomainCollectionView()
+        
+        emailTextField2.placeholder = "Enter your password"
+        emailTextField2.borderStyle = .roundedRect
+        emailTextField2.frame = CGRect(x: 20, y: 200, width: view.bounds.width - 40, height: 40)
+        emailTextField2.autocorrectionType = .no
+        emailTextField2.spellCheckingType = .no
+        view.addSubview(emailTextField2)
+        
+       
+    }
+}
+
+
+extension UITextField: UICollectionViewDelegate, UICollectionViewDataSource {
+
+    private struct AssociatedKeys {
+        static var collectionViewKey = "collectionViewKey"
+    }
+
+    private var collectionView: UICollectionView? {
+        get {
+            return objc_getAssociatedObject(self, &AssociatedKeys.collectionViewKey) as? UICollectionView
+        }
+        set {
+            objc_setAssociatedObject(self, &AssociatedKeys.collectionViewKey, newValue, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        }
+    }
+
+    private var emailDomains: [String] {
+        return ["gmail.com", "yahoo.com", "outlook.com", "icloud.com", "hotmail.com"]
+    }
+
+    // Configure the collection view, called when the text field is ready
+    func configureDomainCollectionView() {
+        // Ensure the text field is added to a view hierarchy before proceeding
+        guard let superview = self.superview else {
+            print("Error: UITextField must be added to a superview before configuring the collection view.")
+            return
+        }
+
+        // Setup Collection View layout (Horizontal)
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .horizontal
+        layout.minimumLineSpacing = 10
+        layout.itemSize = CGSize(width: 120, height: 40)
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 20, bottom: 0, right: 20)
+
+        // Create collection view and add it to the superview
+        let collectionView = UICollectionView(frame: CGRect(x: 0, y: superview.frame.height, width: superview.frame.width, height: 50), collectionViewLayout: layout)
+        collectionView.backgroundColor = .lightGray
+        collectionView.delegate = self
+        collectionView.dataSource = self
+        //collectionView.isHidden = true
+        //collectionView.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "DomainCell")
+        collectionView.register(DomainCell.self, forCellWithReuseIdentifier: "DomainCell")
+
+        superview.addSubview(collectionView)
+        self.collectionView = collectionView
+
+        // Add keyboard observers to adjust the position of collection view
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
+
+        // Add text field listener
+        self.addTarget(self, action: #selector(emailTextFieldDidChange), for: .editingChanged)
+        self.addTarget(self, action: #selector(emailTextFieldDidEditEnd), for: .editingDidEnd)
+        self.addTarget(self, action: #selector(emailTextFieldDidBegin), for: .editingDidBegin)
+
+    }
+
+    // Keyboard handling methods
+    @objc private func keyboardWillShow(_ notification: Notification) {
+        guard let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let keyboardHeight = keyboardFrame.height
+
+        // Safely move the collection view above the keyboard
+        guard let collectionView = self.collectionView, let superview = self.superview else { return }
+
+        UIView.animate(withDuration: 0.3) {
+            collectionView.frame.origin.y = superview.frame.height - keyboardHeight - collectionView.frame.height
+        }
+    }
+
+    @objc private func keyboardWillHide(_ notification: Notification) {
+        // Safely hide the collection view when keyboard is dismissed
+        guard let collectionView = self.collectionView, let superview = self.superview else { return }
+
+        UIView.animate(withDuration: 0.3) {
+            collectionView.frame.origin.y = superview.frame.height
+        }
+    }
+
+    // UICollectionView DataSource methods
+    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return emailDomains.count
+    }
+
+    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        //        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "DomainCell", for: indexPath)
+        //        cell.contentView.backgroundColor = .white
+        //        cell.layer.cornerRadius = 10
+        //        cell.layer.masksToBounds = true
+        //
+        //        let label = UILabel(frame: cell.contentView.bounds)
+        //        label.text = emailDomains[indexPath.row]
+        //        label.textAlignment = .center
+        //        label.textColor = .black
+        //        label.font = UIFont.systemFont(ofSize: 14)
+        //        cell.contentView.addSubview(label)
+        //
+        //        return cell
+        
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "DomainCell", for: indexPath) as! DomainCell
+        let domain = emailDomains[indexPath.row]
+        cell.configure(with: domain)  // Configure the cell with the domain string
+        return cell
+    }
+
+    // UICollectionView Delegate method to handle selection
+    public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let domain = emailDomains[indexPath.row]
+        print("Selected domain: \(domain)")
+
+        // Update the text field with the selected domain
+        self.text = (self.text?.components(separatedBy: "@").first! ?? "") + "@" + domain
+        //collectionView.isHidden = true // Hide collection view after selection
+    }
+
+    // Handle text changes to filter domains
+    @objc private func emailTextFieldDidChange() {
+        guard let inputText = self.text else { return }
+
+        // Show collection view only if there's an "@" symbol
+        if inputText.contains("@") {
+            collectionView?.isHidden = false
+            collectionView?.reloadData()
+        } else {
+            //collectionView?.isHidden = true
+        }
+    }
+    
+    @objc private func emailTextFieldDidEditEnd() {
+        collectionView?.isHidden = true
+    }
+    
+    @objc private func emailTextFieldDidBegin() {
+        self.emailTextFieldDidChange()
+    }
+}
+
+class DomainCell: UICollectionViewCell {
+
+    // UI elements for custom design
+    private var domainLabel: UILabel!
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+
+    private func setupUI() {
+        // Configure the label
+        domainLabel = UILabel()
+        domainLabel.textAlignment = .center
+        domainLabel.textColor = .black
+        domainLabel.font = UIFont.systemFont(ofSize: 14)
+        domainLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        contentView.addSubview(domainLabel)
+
+        // Add constraints to center the label
+        NSLayoutConstraint.activate([
+            domainLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            domainLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            domainLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            domainLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8)
+        ])
+
+        // Customize the appearance
+        contentView.backgroundColor = .white
+        contentView.layer.cornerRadius = 10
+        contentView.layer.masksToBounds = true
+    }
+
+    // Set domain text for the label
+    func configure(with domain: String) {
+        domainLabel.text = domain
+    }
+}
