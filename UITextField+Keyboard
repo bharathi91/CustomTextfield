@@ -223,3 +223,39 @@ class DomainCell: UICollectionViewCell {
         domainLabel.text = domain
     }
 }
+
+
+
+
+import UIKit
+
+extension UIResponder {
+    // A method to find the view controller in the responder chain
+    func findViewController() -> UIViewController? {
+        // Traverse the responder chain to find the view controller
+        var nextResponder: UIResponder? = self
+        while let responder = nextResponder {
+            if let viewController = responder as? UIViewController {
+                return viewController
+            }
+            nextResponder = responder.next
+        }
+        return nil
+    }
+}
+
+// Usage example inside your UICollectionViewCell
+class MyCollectionViewCell: UICollectionViewCell {
+    
+    @IBOutlet weak var textField: UITextField!
+    
+    func findViewControllerForTextField() {
+        // Use the method on the textField to find the view controller
+        if let viewController = textField.findViewController() {
+            print("Found view controller: \(viewController)")
+        } else {
+            print("No view controller found")
+        }
+    }
+}
+
