@@ -301,3 +301,23 @@ func getTextAfterAtSymbol(in textField: UITextField) -> String? {
     // Return nil if no '@' symbol is found
     return nil
 }
+
+
+func animateViewFromBottom(_ view: UIView) {
+        // Starting position is off the screen (bottom)
+        let offScreenY = self.view.frame.height
+        
+        // Define the final position (a little above the bottom of the screen)
+        let finalPosition = self.view.frame.height - 150 // Adjust based on desired final position
+
+        // Use spring animation to animate the view
+        UIView.animate(withDuration: 1.0, // Duration of the animation
+                       delay: 0.0, // Delay before starting the animation
+                       usingSpringWithDamping: 0.6, // Damping (controls the spring effect)
+                       initialSpringVelocity: 0.8, // Initial velocity of the spring animation
+                       options: .curveEaseInOut, // Animation curve
+                       animations: {
+                           view.frame.origin.y = finalPosition // Move the view to the final position
+                       },
+                       completion: nil) // Completion handler (optional)
+    }
