@@ -287,3 +287,17 @@ func moveCursorBeforeAtSymbol(in textField: UITextField) {
         }
     }
 }
+
+func getTextAfterAtSymbol(in textField: UITextField) -> String? {
+    guard let text = textField.text else { return nil }
+
+    // Find the range of '@' symbol
+    if let atRange = text.range(of: "@") {
+        // Get the substring after '@'
+        let textAfterAt = text[atRange.upperBound...]  // This gives you the text after '@'
+        return String(textAfterAt)
+    }
+    
+    // Return nil if no '@' symbol is found
+    return nil
+}
