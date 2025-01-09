@@ -266,3 +266,24 @@ textField.spellCheckingType = .no
 textField.smartQuotesType = .no
 textField.smartDashesType = .no
 textField.smartLinksType = .no
+
+
+import UIKit
+
+func moveCursorBeforeAtSymbol(in textField: UITextField) {
+    guard let text = textField.text else { return }
+
+    // Find the range of '@' symbol
+    if let atRange = text.range(of: "@") {
+        // Get the index of '@' symbol
+        let positionBeforeAt = text.distance(from: text.startIndex, to: atRange.lowerBound)
+        
+        // Create a new position for the cursor before the '@'
+        let newPosition = textField.position(from: textField.beginningOfDocument, offset: positionBeforeAt)
+        
+        // Set the cursor to the new position
+        if let newPosition = newPosition {
+            textField.selectedTextRange = textField.textRange(from: newPosition, to: newPosition)
+        }
+    }
+}
