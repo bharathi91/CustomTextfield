@@ -259,3 +259,10 @@ class MyCollectionViewCell: UICollectionViewCell {
     }
 }
 
+
+textField.autocorrectionType = .no
+textField.autocapitalizationType = .none
+textField.spellCheckingType = .no
+textField.smartQuotesType = .no
+textField.smartDashesType = .no
+textField.smartLinksType = .no
