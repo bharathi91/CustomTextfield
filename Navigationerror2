@@ -1,0 +1,13 @@
+func present(viewController: BaseViewController & BaseNavigationViewControllerDelegate, title: String, isBackButtonEnabled: Bool? = true, isCloseButtonEnabled: Bool = true, progress: Float? = 0, presentingViewController: UIViewController?) {
+        if rootViewController == nil {
+            rootViewController = viewController
+        }
+        
+        navigationController.pushViewController(viewController, title: title, isBackButtonEnabled: isBackButtonEnabled ?? true, isCloseButtonEnabled: isCloseButtonEnabled, progress: progress, animated: navigationController.isViewLoaded)
+        
+        guard let presentingViewController = presentingViewController else { return }
+        presentingViewController.present(navigationController, animated: true, completion: viewController.cardPresentationConfiguration?.presentationCompletion)
+    }
+
+
+Application tried to present modal view controller on itself. Presenting controller is <UINavigationController: <address>>.
