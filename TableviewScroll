@@ -1,0 +1,11 @@
+func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        let contentOffset = scrollView.contentOffset.y
+        
+        if contentOffset > 0 {
+            print("Table view moved down")
+        } else if contentOffset < 0 {
+            print("Table view moved up")
+        } else {
+            print("Table view is at the top")
+        }
+    }
