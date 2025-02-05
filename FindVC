@@ -1,0 +1,26 @@
+func findViewController(ofType type: UIViewController.Type, in viewController: UIViewController?) -> UIViewController? {
+    if viewController is type {
+        return viewController
+    }
+    
+    if let presented = viewController?.presentedViewController {
+        return findViewController(ofType: type, in: presented)
+    }
+    
+    if let childViewControllers = viewController?.children {
+        for child in childViewControllers {
+            if let found = findViewController(ofType: type, in: child) {
+                return found
+            }
+        }
+    }
+    
+    return nil
+}
+
+
+if let foundVC = findViewController(ofType: YourViewController.self, in: self.view.window?.rootViewController) {
+    print("Found view controller: \(foundVC)")
+} else {
+    print("View controller not found.")
+}
